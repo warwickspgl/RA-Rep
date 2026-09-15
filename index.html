@@ -31,7 +31,10 @@
   #portal { display:none; }
   .toolbar { display:flex; gap:10px; margin-bottom:16px; align-items:center; }
   .toolbar input { flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
+  .toolbar select { padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff; }
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
+  .lodge-line { font-size:12px; color:var(--muted); margin-top:2px; }
+  .lodge-line .former { font-style:italic; }
 
   section.group { margin-bottom: 22px; }
   section.group h2 { font-size:14px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:6px; }
@@ -96,6 +99,10 @@
   <div id="portal">
     <div class="toolbar">
       <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()">
+      <select id="sortBy" onchange="render()">
+        <option value="name">Sort: Name</option>
+        <option value="lodge">Sort: Lodge</option>
+      </select>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
     </div>
@@ -209,6 +216,18 @@ function latestStatus(glRef) {
   return list.length ? list[0] : null;
 }
 
+function lodgeLine(m) {
+  const parts = [];
+  if (m.currentLodges && m.currentLodges.length) parts.push(m.currentLodges.join(', '));
+  if (m.formerLodges && m.formerLodges.length) parts.push('<span class="former">' + m.formerLodges.join(', ') + ' (left)</span>');
+  return parts.length ? ('<div class="lodge-line">Lodge: ' + parts.join(' · ') + '</div>') : '';
+}
+
+function sortKeyLodge(m) {
+  const all = (m.currentLodges || []).concat(m.formerLodges || []).slice().sort();
+  return (all[0] || 'ZZZZ') + '|' + m.surname3 + m.initials;
+}
+
 function degreeBadges(m) {
   let out = '';
   ['EA', 'FC', 'MM'].forEach(deg => {
@@ -221,9 +240,16 @@ function degreeBadges(m) {
 
 function render() {
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  const filtered = members.filter(m => {
+  const sortBy = document.getElementById('sortBy').value;
+  let filtered = members.filter(m => {
     const name = (m.initials + ' ' + m.surname3).toLowerCase();
     return !q || name.includes(q);
+  });
+
+  filtered = filtered.slice().sort((a, b) => {
+    const ka = sortBy === 'lodge' ? sortKeyLodge(a) : (a.surname3 + a.initials);
+    const kb = sortBy === 'lodge' ? sortKeyLodge(b) : (b.surname3 + b.initials);
+    return ka.localeCompare(kb);
   });
 
   const never = filtered.filter(m => m.raStatus === 'never');
@@ -260,6 +286,7 @@ function renderMember(m) {
   return '<div class="member">' +
     '<div class="member-top" onclick="toggleDetails(\'' + domId + '\')">' +
       '<div><div class="member-name">' + escapeHtml(m.initials) + ' ' + escapeHtml(m.surname3) + '</div>' +
+      lodgeLine(m) +
       '<div class="badges">' + degreeBadges(m) + '</div></div>' +
       '<span class="status-chip ' + chipClass + '">' + escapeHtml(chipText) + '</span>' +
     '</div>' +
