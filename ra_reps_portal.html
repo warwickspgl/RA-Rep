@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Royal Arch Reps System</title>
+<style>
+  :root {
+    --navy: #1c2b4a; --gold: #a9812f; --bg: #f4f5f7; --card: #ffffff;
+    --text: #22262e; --muted: #6b7280; --border: #dfe3e8;
+    --green: #2e7d4f; --amber: #b8860b; --red: #a33;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--navy); color: #fff; padding: 18px 24px; display:flex; align-items:center; justify-content:space-between; }
+  header h1 { font-size: 18px; margin:0; font-weight:600; letter-spacing:.3px; }
+  header .tier-badge { font-size: 12px; background: var(--gold); color:#221; padding:3px 10px; border-radius:12px; display:none; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+  .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:18px; }
+
+  /* Login */
+  #loginCard .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  #loginCard .tabs button { flex:1; padding:10px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; font-size:14px; }
+  #loginCard .tabs button.active { background: var(--navy); color:#fff; border-color: var(--navy); }
+  #loginCard label { display:block; font-size:13px; color:var(--muted); margin-top:12px; margin-bottom:4px; }
+  #loginCard input { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
+  #loginCard .go { margin-top:16px; width:100%; padding:11px; background:var(--navy); color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer; }
+  #loginError { color: var(--red); font-size:13px; margin-top:10px; display:none; }
+
+  /* Portal */
+  #portal { display:none; }
+  .toolbar { display:flex; gap:10px; margin-bottom:16px; align-items:center; }
+  .toolbar input { flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
+  .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
+
+  section.group { margin-bottom: 22px; }
+  section.group h2 { font-size:14px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:6px; }
+
+  .member { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:#fff; }
+  .member-top { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .member-name { font-weight:600; font-size:15px; }
+  .badges { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:10px; background:#eef1f5; color:var(--muted); border:1px solid var(--border); }
+  .badge.degree { background:#e8f0fe; color:#1a56b0; border-color:#c7d8f5; }
+  .badge.pm { background:#fdf0e0; color:var(--amber); border-color:#f0dcb0; }
+  .status-chip { font-size:12px; padding:3px 10px; border-radius:12px; font-weight:600; }
+  .status-chip.none { background:#eee; color:var(--muted); }
+  .status-chip.notinterested { background:#fbe4e4; color:var(--red); }
+  .status-chip.longterm { background:#eaf1ff; color:#2255aa; }
+  .status-chip.mediumterm { background:#fff3d6; color:var(--amber); }
+  .status-chip.underway { background:#e2f5e8; color:var(--green); }
+
+  .details { display:none; margin-top:12px; border-top:1px dashed var(--border); padding-top:10px; }
+  .details.open { display:block; }
+  .history-row { font-size:13px; padding:6px 0; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; gap:10px; }
+  .history-row .meta { color:var(--muted); font-size:12px; }
+
+  .flag-form { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+  .flag-form > div { display:flex; flex-direction:column; }
+  .flag-form label { font-size:12px; color:var(--muted); margin-bottom:3px; }
+  .flag-form select, .flag-form input { padding:7px 8px; border:1px solid var(--border); border-radius:5px; font-size:13px; }
+  .flag-form input[type=text] { min-width:160px; }
+  .flag-form button { padding:8px 14px; background:var(--navy); color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:13px; }
+  .flag-note { font-size:12px; color:var(--green); margin-top:6px; display:none; }
+
+  .empty { color:var(--muted); font-size:13px; padding:10px 0; }
+  .loading { text-align:center; padding:40px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Royal Arch Reps System</h1>
+  <span class="tier-badge" id="tierBadge"></span>
+</header>
+
+<main>
+
+  <!-- LOGIN -->
+  <div class="card" id="loginCard">
+    <div class="tabs">
+      <button type="button" id="tabLodge" class="active" onclick="setTier('lodge')">Lodge RA Rep</button>
+      <button type="button" id="tabExec" onclick="setTier('exec')">Province Officer</button>
+    </div>
+    <div>
+      <label id="codeLabel">Lodge code</label>
+      <input type="text" id="codeInput" placeholder="e.g. L123" autocomplete="off">
+      <label>Passphrase</label>
+      <input type="password" id="passInput" autocomplete="off">
+      <button class="go" onclick="login()">Access Portal</button>
+      <div id="loginError">Access denied — check your code and passphrase.</div>
+    </div>
+  </div>
+
+  <!-- PORTAL -->
+  <div id="portal">
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()">
+      <button onclick="refresh()">Refresh</button>
+      <button onclick="logout()">Log out</button>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <div class="loading" id="loadingMsg" style="display:none;">Loading…</div>
+
+</main>
+
+<!-- hidden iframe target for comment form POST (avoids CORS entirely) -->
+<iframe name="hiddenTarget" style="display:none;"></iframe>
+<form id="commentForm" method="POST" target="hiddenTarget" style="display:none;"
+      action="https://script.google.com/macros/s/AKfycbwSlZkOA9dngyuwyKXDEhbg4iWNnx80xyn6tm1gHaT52TFH6EQ_zIjl51mVkFfkHljB/exec">
+  <input type="hidden" name="action" value="commentUpload">
+  <input type="hidden" name="lodgeCode" id="f_lodgeCode">
+  <input type="hidden" name="pass" id="f_pass">
+  <input type="hidden" name="glRef" id="f_glRef">
+  <input type="hidden" name="repRef" id="f_repRef">
+  <input type="hidden" name="status" id="f_status">
+  <input type="hidden" name="date" id="f_date">
+  <input type="hidden" name="note" id="f_note">
+</form>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwSlZkOA9dngyuwyKXDEhbg4iWNnx80xyn6tm1gHaT52TFH6EQ_zIjl51mVkFfkHljB/exec';
+
+let tier = 'lodge';       // 'lodge' or 'exec'
+let authCode = '';
+let authPass = '';
+let members = [];
+let comments = [];        // flat list across all fetched members
+
+const STATUS_CLASS = {
+  'Not Interested': 'notinterested',
+  'Interested long term': 'longterm',
+  'Interested medium term': 'mediumterm',
+  'Membership underway': 'underway'
+};
+
+function setTier(t) {
+  tier = t;
+  document.getElementById('tabLodge').classList.toggle('active', t === 'lodge');
+  document.getElementById('tabExec').classList.toggle('active', t === 'exec');
+  document.getElementById('codeLabel').textContent = t === 'lodge' ? 'Lodge code' : 'Officer code';
+  document.getElementById('codeInput').placeholder = t === 'lodge' ? 'e.g. L123' : 'e.g. PMO1';
+}
+
+function login() {
+  authCode = document.getElementById('codeInput').value.trim().toUpperCase();
+  authPass = document.getElementById('passInput').value;
+  document.getElementById('loginError').style.display = 'none';
+  fetchData(true);
+}
+
+function logout() {
+  authCode = ''; authPass = ''; members = []; comments = [];
+  document.getElementById('portal').style.display = 'none';
+  document.getElementById('loginCard').style.display = 'block';
+  document.getElementById('tierBadge').style.display = 'none';
+  document.getElementById('passInput').value = '';
+}
+
+function refresh() { fetchData(false); }
+
+function fetchData(isLogin) {
+  document.getElementById('loadingMsg').style.display = 'block';
+  const cbName = 'raCb_' + Date.now();
+  window[cbName] = function(res) {
+    document.getElementById('loadingMsg').style.display = 'none';
+    delete window[cbName];
+    if (!res.ok) {
+      if (isLogin) {
+        document.getElementById('loginError').style.display = 'block';
+      } else {
+        alert('Fetch failed: ' + res.error);
+      }
+      return;
+    }
+    members = res.members;
+    comments = res.comments;
+    if (isLogin) {
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('portal').style.display = 'block';
+      const badge = document.getElementById('tierBadge');
+      badge.textContent = tier === 'lodge' ? ('Lodge ' + authCode) : ('Officer ' + authCode);
+      badge.style.display = 'inline-block';
+    }
+    render();
+  };
+
+  const action = tier === 'lodge' ? 'memberFetch' : 'execFetch';
+  const codeParam = tier === 'lodge' ? 'lodgeCode' : 'code';
+  const script = document.createElement('script');
+  script.src = GAS_URL + '?action=' + action + '&' + codeParam + '=' + encodeURIComponent(authCode)
+              + '&pass=' + encodeURIComponent(authPass) + '&callback=' + cbName;
+  script.onerror = function() {
+    document.getElementById('loadingMsg').style.display = 'none';
+    if (isLogin) document.getElementById('loginError').style.display = 'block';
+  };
+  document.body.appendChild(script);
+}
+
+function commentsFor(glRef) {
+  return comments.filter(c => c.glRef === glRef)
+                 .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function latestStatus(glRef) {
+  const list = commentsFor(glRef);
+  return list.length ? list[0] : null;
+}
+
+function degreeBadges(m) {
+  let out = '';
+  ['EA', 'FC', 'MM'].forEach(deg => {
+    const d = m.degrees && m.degrees[deg];
+    if (d) out += '<span class="badge degree">' + deg + ' ' + d + '</span>';
+  });
+  if (m.pastMaster) out += '<span class="badge pm">PM</span>';
+  return out;
+}
+
+function render() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const filtered = members.filter(m => {
+    const name = (m.initials + ' ' + m.surname3).toLowerCase();
+    return !q || name.includes(q);
+  });
+
+  const never = filtered.filter(m => m.raStatus === 'never');
+  const unattached = filtered.filter(m => m.raStatus === 'unattached');
+
+  const html =
+    renderGroup('Never been Royal Arch members', never) +
+    renderGroup('Unattached — formerly Royal Arch members', unattached);
+
+  document.getElementById('results').innerHTML = html || '<div class="empty">No members found.</div>';
+}
+
+function renderGroup(title, list) {
+  let rows = list.map(renderMember).join('');
+  if (!rows) rows = '<div class="empty">None.</div>';
+  return '<section class="group"><h2>' + title + ' (' + list.length + ')</h2>' + rows + '</section>';
+}
+
+function renderMember(m) {
+  const latest = latestStatus(m.glRef);
+  const chipClass = latest ? (STATUS_CLASS[latest.status] || '') : 'none';
+  const chipText = latest ? latest.status : 'No flag yet';
+  const hist = commentsFor(m.glRef);
+  const histHtml = hist.length
+    ? hist.map(c =>
+        '<div class="history-row"><span>' + c.status + (c.note ? ' — ' + escapeHtml(c.note) : '') + '</span>' +
+        '<span class="meta">' + c.date + ' · ' + c.lodgeNo + ' · ' + c.repRef + '</span></div>'
+      ).join('')
+    : '<div class="empty">No history yet.</div>';
+
+  const flagFormHtml = (tier === 'lodge') ? renderFlagForm(m) : '';
+
+  const domId = 'm_' + m.glRef.replace(/[^a-zA-Z0-9]/g, '');
+  return '<div class="member">' +
+    '<div class="member-top" onclick="toggleDetails(\'' + domId + '\')">' +
+      '<div><div class="member-name">' + escapeHtml(m.initials) + ' ' + escapeHtml(m.surname3) + '</div>' +
+      '<div class="badges">' + degreeBadges(m) + '</div></div>' +
+      '<span class="status-chip ' + chipClass + '">' + escapeHtml(chipText) + '</span>' +
+    '</div>' +
+    '<div class="details" id="' + domId + '">' + histHtml + flagFormHtml + '</div>' +
+  '</div>';
+}
+
+function renderFlagForm(m) {
+  const idBase = 'f_' + m.glRef.replace(/[^a-zA-Z0-9]/g, '');
+  const today = new Date().toISOString().slice(0, 10);
+  return '<div class="flag-form">' +
+    '<div><label>Status</label><select id="' + idBase + '_status">' +
+      '<option>Not Interested</option>' +
+      '<option>Interested long term</option>' +
+      '<option>Interested medium term</option>' +
+      '<option>Membership underway</option>' +
+    '</select></div>' +
+    '<div><label>Date</label><input type="date" id="' + idBase + '_date" value="' + today + '"></div>' +
+    '<div><label>Rep ref</label><input type="text" id="' + idBase + '_rep" placeholder="e.g. L123" value="' + authCode + '"></div>' +
+    '<div><label>Note (optional)</label><input type="text" id="' + idBase + '_note"></div>' +
+    '<button type="button" onclick="submitFlag(\'' + m.glRef + '\', \'' + idBase + '\')">Save flag</button>' +
+    '<div class="flag-note" id="' + idBase + '_saved">Saved. Refresh to see it in history.</div>' +
+  '</div>';
+}
+
+function submitFlag(glRef, idBase) {
+  document.getElementById('f_lodgeCode').value = authCode;
+  document.getElementById('f_pass').value = authPass;
+  document.getElementById('f_glRef').value = glRef;
+  document.getElementById('f_repRef').value = document.getElementById(idBase + '_rep').value || authCode;
+  document.getElementById('f_status').value = document.getElementById(idBase + '_status').value;
+  document.getElementById('f_date').value = document.getElementById(idBase + '_date').value;
+  document.getElementById('f_note').value = document.getElementById(idBase + '_note').value;
+  document.getElementById('commentForm').submit();
+
+  const saved = document.getElementById(idBase + '_saved');
+  saved.style.display = 'block';
+  // Fire-and-forget over a hidden iframe can't confirm success — same
+  // trade-off as Doc Vault. Advise a manual refresh rather than claiming
+  // success outright.
+}
+
+function toggleDetails(domId) {
+  document.getElementById(domId).classList.toggle('open');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+</script>
+
+</body>
+</html>
