@@ -35,6 +35,13 @@
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
   .lodge-line { font-size:12px; color:var(--muted); margin-top:2px; }
   .lodge-line .former { font-style:italic; }
+  .latest-comment { font-size:12px; margin-top:4px; font-weight:600; }
+  .latest-comment.none { color:var(--muted); font-weight:400; font-style:italic; }
+  .latest-comment.notinterested { color:var(--red); }
+  .latest-comment.longterm { color:#2255aa; }
+  .latest-comment.mediumterm { color:var(--amber); }
+  .latest-comment.underway { color:var(--green); }
+  .history-btn { font-size:12px; color:var(--navy); background:none; border:none; text-decoration:underline; cursor:pointer; padding:4px 0 0; }
 
   section.group { margin-bottom: 22px; }
   section.group h2 { font-size:14px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:6px; }
@@ -242,6 +249,16 @@ function sortKeyLodge(m) {
   return (all[0] || 'ZZZZ') + '|' + m.surname3 + m.initials;
 }
 
+function latestCommentLine(m) {
+  const latest = latestStatus(m.glRef);
+  if (!latest) return '<div class="latest-comment none">No flag yet</div>';
+  const cls = STATUS_CLASS[latest.status] || '';
+  return '<div class="latest-comment ' + cls + '">' +
+    escapeHtml(latest.status) + ' — ' + escapeHtml(latest.lodgeNo) + ' · ' +
+    escapeHtml(latest.repRef) + ' · ' + escapeHtml(latest.date) +
+  '</div>';
+}
+
 function degreeBadges(m) {
   let out = '';
   ['EA', 'FC', 'MM'].forEach(deg => {
@@ -285,9 +302,6 @@ function renderGroup(title, list) {
 }
 
 function renderMember(m) {
-  const latest = latestStatus(m.glRef);
-  const chipClass = latest ? (STATUS_CLASS[latest.status] || '') : 'none';
-  const chipText = latest ? latest.status : 'No flag yet';
   const hist = commentsFor(m.glRef);
   const histHtml = hist.length
     ? hist.map(c =>
@@ -297,14 +311,18 @@ function renderMember(m) {
     : '<div class="empty">No history yet.</div>';
 
   const flagFormHtml = (tier === 'lodge') ? renderFlagForm(m) : '';
-
   const domId = 'm_' + m.glRef.replace(/[^a-zA-Z0-9]/g, '');
+  const historyBtnHtml = (hist.length > 1)
+    ? '<button type="button" class="history-btn" onclick="event.stopPropagation(); toggleDetails(\'' + domId + '\')">History (' + hist.length + ')</button>'
+    : '';
+
   return '<div class="member">' +
     '<div class="member-top" onclick="toggleDetails(\'' + domId + '\')">' +
       '<div><div class="member-name">' + escapeHtml(m.initials) + ' ' + escapeHtml(m.surname3) + '</div>' +
       lodgeLine(m) +
+      latestCommentLine(m) +
+      historyBtnHtml +
       '<div class="badges">' + degreeBadges(m) + '</div></div>' +
-      '<span class="status-chip ' + chipClass + '">' + escapeHtml(chipText) + '</span>' +
     '</div>' +
     '<div class="details" id="' + domId + '">' + histHtml + flagFormHtml + '</div>' +
   '</div>';
