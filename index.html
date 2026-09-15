@@ -102,6 +102,7 @@
       <select id="sortBy" onchange="render()">
         <option value="name">Sort: Name</option>
         <option value="lodge">Sort: Lodge</option>
+        <option value="intent">Sort: Intent</option>
       </select>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
@@ -223,6 +224,19 @@ function lodgeLine(m) {
   return parts.length ? ('<div class="lodge-line">Lodge: ' + parts.join(' · ') + '</div>') : '';
 }
 
+const INTENT_RANK = {
+  'Membership underway': 0,
+  'Interested medium term': 1,
+  'Interested long term': 2,
+  'Not Interested': 3
+};
+
+function sortKeyIntent(m) {
+  const latest = latestStatus(m.glRef);
+  const rank = latest ? (INTENT_RANK[latest.status] !== undefined ? INTENT_RANK[latest.status] : 4) : 5;
+  return rank + '|' + m.surname3 + m.initials;
+}
+
 function sortKeyLodge(m) {
   const all = (m.currentLodges || []).concat(m.formerLodges || []).slice().sort();
   return (all[0] || 'ZZZZ') + '|' + m.surname3 + m.initials;
@@ -247,8 +261,10 @@ function render() {
   });
 
   filtered = filtered.slice().sort((a, b) => {
-    const ka = sortBy === 'lodge' ? sortKeyLodge(a) : (a.surname3 + a.initials);
-    const kb = sortBy === 'lodge' ? sortKeyLodge(b) : (b.surname3 + b.initials);
+    let ka, kb;
+    if (sortBy === 'lodge') { ka = sortKeyLodge(a); kb = sortKeyLodge(b); }
+    else if (sortBy === 'intent') { ka = sortKeyIntent(a); kb = sortKeyIntent(b); }
+    else { ka = a.surname3 + a.initials; kb = b.surname3 + b.initials; }
     return ka.localeCompare(kb);
   });
 
