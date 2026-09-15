@@ -32,6 +32,7 @@
   .toolbar { display:flex; gap:10px; margin-bottom:16px; align-items:center; }
   .toolbar input { flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
   .toolbar select { padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff; }
+  .no-comment-toggle { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); white-space:nowrap; }
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
   .lodge-line { font-size:12px; color:var(--muted); margin-top:2px; }
   .lodge-line .former { font-style:italic; }
@@ -41,6 +42,7 @@
   .latest-comment.longterm { color:#2255aa; }
   .latest-comment.mediumterm { color:var(--amber); }
   .latest-comment.underway { color:var(--green); }
+  .latest-comment-meta { font-weight:400; color:var(--muted); font-size:11px; }
   .history-btn { font-size:12px; color:var(--navy); background:none; border:none; text-decoration:underline; cursor:pointer; padding:4px 0 0; }
 
   section.group { margin-bottom: 22px; }
@@ -111,6 +113,9 @@
         <option value="lodge">Sort: Lodge</option>
         <option value="intent">Sort: Intent</option>
       </select>
+      <label class="no-comment-toggle">
+        <input type="checkbox" id="noCommentOnly" onchange="render()"> No comment only
+      </label>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
     </div>
@@ -253,9 +258,11 @@ function latestCommentLine(m) {
   const latest = latestStatus(m.glRef);
   if (!latest) return '<div class="latest-comment none">No flag yet</div>';
   const cls = STATUS_CLASS[latest.status] || '';
+  const noteHtml = latest.note ? (' — ' + escapeHtml(latest.note)) : '';
   return '<div class="latest-comment ' + cls + '">' +
-    escapeHtml(latest.status) + ' — ' + escapeHtml(latest.lodgeNo) + ' · ' +
-    escapeHtml(latest.repRef) + ' · ' + escapeHtml(latest.date) +
+    escapeHtml(latest.status) + noteHtml + '<br>' +
+    '<span class="latest-comment-meta">' + escapeHtml(latest.lodgeNo) + ' · ' +
+    escapeHtml(latest.repRef) + ' · ' + escapeHtml(latest.date) + '</span>' +
   '</div>';
 }
 
@@ -272,9 +279,13 @@ function degreeBadges(m) {
 function render() {
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const sortBy = document.getElementById('sortBy').value;
+  const noCommentOnly = document.getElementById('noCommentOnly').checked;
+
   let filtered = members.filter(m => {
     const name = (m.initials + ' ' + m.surname3).toLowerCase();
-    return !q || name.includes(q);
+    const matchesSearch = !q || name.includes(q);
+    const matchesCommentFilter = !noCommentOnly || !latestStatus(m.glRef);
+    return matchesSearch && matchesCommentFilter;
   });
 
   filtered = filtered.slice().sort((a, b) => {
