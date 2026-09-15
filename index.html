@@ -24,6 +24,10 @@
   #loginCard .tabs button.active { background: var(--navy); color:#fff; border-color: var(--navy); }
   #loginCard label { display:block; font-size:13px; color:var(--muted); margin-top:12px; margin-bottom:4px; }
   #loginCard input { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
+  .pass-wrap { position:relative; }
+  .pass-wrap input { padding-right:38px; }
+  .pass-toggle { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:15px; padding:4px 6px; line-height:1; opacity:.6; }
+  .pass-toggle:hover { opacity:1; }
   #loginCard .go { margin-top:16px; width:100%; padding:11px; background:var(--navy); color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer; }
   #loginError { color: var(--red); font-size:13px; margin-top:10px; display:none; }
 
@@ -98,8 +102,11 @@
       <label id="codeLabel">Lodge code</label>
       <input type="text" id="codeInput" placeholder="e.g. L123" autocomplete="off">
       <label>Passphrase</label>
-      <input type="password" id="passInput" autocomplete="off">
-      <button class="go" onclick="login()">Access Portal</button>
+      <div class="pass-wrap">
+        <input type="password" id="passInput" autocomplete="off">
+        <button type="button" class="pass-toggle" onclick="togglePassVisibility()" aria-label="Show passphrase">👁</button>
+      </div>
+      <button class="go" onclick="login()">Access RA Reporting System</button>
       <div id="loginError">Access denied — check your code and passphrase.</div>
     </div>
   </div>
@@ -155,6 +162,11 @@ const STATUS_CLASS = {
   'Interested medium term': 'mediumterm',
   'Membership underway': 'underway'
 };
+
+function togglePassVisibility() {
+  const input = document.getElementById('passInput');
+  input.type = (input.type === 'password') ? 'text' : 'password';
+}
 
 function setTier(t) {
   tier = t;
