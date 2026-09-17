@@ -42,6 +42,11 @@
   .rank-filter label { display:flex; align-items:center; gap:5px; cursor:pointer; }
   .rank-filter-all { padding:3px 10px; border:1px solid var(--border); background:#f8f9fb; border-radius:12px; cursor:pointer; font-size:12px; color:var(--muted); }
   .overview-dashboard { display:none; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:18px; }
+  .lodge-stats-banner { display:none; background:var(--navy); color:#fff; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
+  .lodge-stats-banner .lsb-title { font-size:13px; opacity:.8; margin-bottom:8px; }
+  .lodge-stats-banner .lsb-row { display:flex; flex-wrap:wrap; gap:22px; }
+  .lodge-stats-banner .lsb-item .lsb-value { font-size:20px; font-weight:700; }
+  .lodge-stats-banner .lsb-item .lsb-label { font-size:11px; opacity:.75; text-transform:uppercase; letter-spacing:.3px; }
   .stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; cursor:pointer; transition:border-color .1s, box-shadow .1s; }
   .stat:hover { border-color:var(--navy); }
   .stat.active { border-color:var(--navy); border-width:2px; box-shadow:0 0 0 1px var(--navy); background:#eef1f8; }
@@ -113,6 +118,9 @@
     .rank-filter { gap:10px 14px; }
 
     .overview-dashboard { grid-template-columns:repeat(3, 1fr); gap:8px; }
+    .lodge-stats-banner { padding:12px 14px; }
+    .lodge-stats-banner .lsb-row { gap:14px; }
+    .lodge-stats-banner .lsb-item .lsb-value { font-size:17px; }
     .stat { padding:10px 4px; }
     .stat-value { font-size:18px; }
     .stat-label { font-size:9.5px; }
@@ -165,6 +173,7 @@
 
   <!-- PORTAL -->
   <div id="portal">
+    <div id="lodgeStatsBanner"></div>
     <div class="toolbar">
       <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()" style="display:none;">
       <select id="lodgeFilter" onchange="render()" style="display:none;">
@@ -231,6 +240,7 @@ let authCode = '';
 let authPass = '';
 let members = [];
 let comments = [];        // flat list across all fetched members
+let lodgeStats = null;    // this lodge's stats (lodge tier) or null
 let statFilter = null;    // set by clicking an overview stat box; null = no stat filter active
 
 const STAT_LABELS = {
@@ -271,10 +281,11 @@ function login() {
 }
 
 function logout() {
-  authCode = ''; authPass = ''; members = []; comments = [];
+  authCode = ''; authPass = ''; members = []; comments = []; lodgeStats = null;
   document.getElementById('portal').style.display = 'none';
   document.getElementById('loginCard').style.display = 'block';
   document.getElementById('tierBadge').style.display = 'none';
+  document.getElementById('lodgeStatsBanner').style.display = 'none';
   document.getElementById('passInput').value = '';
 }
 
@@ -296,7 +307,9 @@ function fetchData(isLogin) {
     }
     members = res.members;
     comments = res.comments;
+    lodgeStats = res.lodgeStats || null;
     populateLodgeFilter();
+    renderLodgeStatsBanner();
     if (isLogin) {
       document.getElementById('loginCard').style.display = 'none';
       document.getElementById('portal').style.display = 'block';
@@ -407,6 +420,27 @@ function degreeDatesLine(m) {
 function setAllRankBoxes(checked) {
   document.querySelectorAll('.rankBox').forEach(box => box.checked = checked);
   render();
+}
+
+function renderLodgeStatsBanner() {
+  const container = document.getElementById('lodgeStatsBanner');
+  if (tier !== 'lodge' || !lodgeStats) {
+    container.style.display = 'none';
+    return;
+  }
+
+  const item = (label, value) =>
+    '<div class="lsb-item"><div class="lsb-value">' + value + '</div><div class="lsb-label">' + label + '</div></div>';
+
+  container.innerHTML =
+    '<div class="lsb-title">Lodge ' + escapeHtml(lodgeStats.lodge) + ' — membership snapshot</div>' +
+    '<div class="lsb-row">' +
+      item('Total members', lodgeStats.totalMembers) +
+      item('In Royal Arch', lodgeStats.raMembers) +
+      item('Unattached', lodgeStats.unattached + ' (' + lodgeStats.unattachedPct + '%)') +
+      item('Never RA members', lodgeStats.nonRA + ' (' + lodgeStats.nonRAPct + '%)') +
+    '</div>';
+  container.style.display = 'block';
 }
 
 function populateLodgeFilter() {
