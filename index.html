@@ -36,7 +36,6 @@
   .toolbar { display:flex; gap:10px; margin-bottom:16px; align-items:center; }
   .toolbar input { flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
   .toolbar select { padding:9px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff; }
-  .no-comment-toggle { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); white-space:nowrap; }
   .rank-filter { display:flex; align-items:center; gap:14px; margin:10px 0 16px; padding:8px 12px; background:#fff; border:1px solid var(--border); border-radius:8px; font-size:13px; flex-wrap:wrap; }
   .rank-filter-label { color:var(--muted); font-weight:600; }
   .rank-filter label { display:flex; align-items:center; gap:5px; cursor:pointer; }
@@ -135,9 +134,11 @@
         <option value="lodge">Sort: Lodge</option>
         <option value="intent">Sort: Intent</option>
       </select>
-      <label class="no-comment-toggle">
-        <input type="checkbox" id="noCommentOnly" onchange="render()"> No comment only
-      </label>
+      <select id="commentFilter" onchange="render()">
+        <option value="all">Comments: All</option>
+        <option value="has">Comments: With comment</option>
+        <option value="none">Comments: No comment</option>
+      </select>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
     </div>
@@ -406,7 +407,7 @@ function renderOverview(list) {
 function render() {
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const sortBy = document.getElementById('sortBy').value;
-  const noCommentOnly = document.getElementById('noCommentOnly').checked;
+  const commentFilter = document.getElementById('commentFilter').value;
   const lodgeFilterVal = document.getElementById('lodgeFilter').value;
 
   const rankBoxes = document.querySelectorAll('.rankBox');
@@ -416,7 +417,10 @@ function render() {
   let filtered = members.filter(m => {
     const name = (m.initials + ' ' + m.surname3).toLowerCase();
     const matchesSearch = !q || name.includes(q);
-    const matchesCommentFilter = !noCommentOnly || !latestStatus(m.glRef);
+    const hasComment = !!latestStatus(m.glRef);
+    const matchesCommentFilter = commentFilter === 'all' ||
+      (commentFilter === 'has' && hasComment) ||
+      (commentFilter === 'none' && !hasComment);
     const rank = memberRank(m);
     const matchesRankFilter = allRanksChecked || (rank && checkedRanks.has(rank));
     const matchesLodgeFilter = !lodgeFilterVal || (m.currentLodges || []).indexOf(lodgeFilterVal) !== -1;
