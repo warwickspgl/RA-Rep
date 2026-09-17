@@ -41,6 +41,10 @@
   .rank-filter-label { color:var(--muted); font-weight:600; }
   .rank-filter label { display:flex; align-items:center; gap:5px; cursor:pointer; }
   .rank-filter-all { padding:3px 10px; border:1px solid var(--border); background:#f8f9fb; border-radius:12px; cursor:pointer; font-size:12px; color:var(--muted); }
+  .overview-dashboard { display:none; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:18px; }
+  .stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; }
+  .stat-value { font-size:22px; font-weight:700; color:var(--navy); }
+  .stat-label { font-size:11px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.3px; }
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
   .lodge-line { font-size:12px; color:var(--muted); margin-top:2px; }
   .lodge-line .former { font-style:italic; }
@@ -85,7 +89,7 @@
   .flag-form select, .flag-form input { padding:7px 8px; border:1px solid var(--border); border-radius:5px; font-size:13px; }
   .flag-form input[type=text] { min-width:160px; }
   .flag-form button { padding:8px 14px; background:var(--navy); color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:13px; }
-  .flag-note { font-size:12px; color:var(--green); margin-top:6px; display:none; }
+  .flag-form button:disabled { background:#9aa3b2; cursor:default; }
 
   .empty { color:var(--muted); font-size:13px; padding:10px 0; }
   .loading { text-align:center; padding:40px; color:var(--muted); }
@@ -123,6 +127,9 @@
   <div id="portal">
     <div class="toolbar">
       <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()">
+      <select id="lodgeFilter" onchange="render()" style="display:none;">
+        <option value="">All Lodges</option>
+      </select>
       <select id="sortBy" onchange="render()">
         <option value="name">Sort: Name</option>
         <option value="lodge">Sort: Lodge</option>
@@ -143,6 +150,7 @@
       <button type="button" class="rank-filter-all" onclick="setAllRankBoxes(true)">All</button>
       <button type="button" class="rank-filter-all" onclick="setAllRankBoxes(false)">None</button>
     </div>
+    <div id="overview" class="overview-dashboard"></div>
     <div id="results"></div>
   </div>
 
@@ -234,6 +242,7 @@ function fetchData(isLogin) {
     }
     members = res.members;
     comments = res.comments;
+    populateLodgeFilter();
     if (isLogin) {
       document.getElementById('loginCard').style.display = 'none';
       document.getElementById('portal').style.display = 'block';
@@ -341,10 +350,64 @@ function setAllRankBoxes(checked) {
   render();
 }
 
+function populateLodgeFilter() {
+  const sel = document.getElementById('lodgeFilter');
+  if (tier !== 'exec') {
+    sel.style.display = 'none';
+    return;
+  }
+  const current = sel.value;
+  const lodges = new Set();
+  members.forEach(m => (m.currentLodges || []).forEach(l => lodges.add(l)));
+  const sorted = Array.from(lodges).sort();
+  sel.innerHTML = '<option value="">All Lodges</option>' +
+    sorted.map(l => '<option value="' + l + '">' + l + '</option>').join('');
+  if (sorted.indexOf(current) !== -1) sel.value = current;
+  sel.style.display = 'inline-block';
+}
+
+function renderOverview(list) {
+  const container = document.getElementById('overview');
+  if (tier !== 'exec') {
+    container.style.display = 'none';
+    return;
+  }
+
+  const counts = {
+    never: 0, unattached: 0, noComment: 0,
+    notInterested: 0, longTerm: 0, mediumTerm: 0, underway: 0
+  };
+  list.forEach(m => {
+    if (m.raStatus === 'never') counts.never++;
+    else if (m.raStatus === 'unattached') counts.unattached++;
+
+    const latest = latestStatus(m.glRef);
+    if (!latest) counts.noComment++;
+    else if (latest.status === 'Not Interested') counts.notInterested++;
+    else if (latest.status === 'Interested long term') counts.longTerm++;
+    else if (latest.status === 'Interested medium term') counts.mediumTerm++;
+    else if (latest.status === 'Membership underway') counts.underway++;
+  });
+
+  const stat = (label, value) =>
+    '<div class="stat"><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div>';
+
+  container.innerHTML =
+    stat('Never a member', counts.never) +
+    stat('Unattached', counts.unattached) +
+    stat('No comment', counts.noComment) +
+    stat('Not Interested', counts.notInterested) +
+    stat('Long term', counts.longTerm) +
+    stat('Medium term', counts.mediumTerm) +
+    stat('On progress', counts.underway);
+  container.style.display = 'grid';
+}
+
 function render() {
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const sortBy = document.getElementById('sortBy').value;
   const noCommentOnly = document.getElementById('noCommentOnly').checked;
+  const lodgeFilterVal = document.getElementById('lodgeFilter').value;
 
   const rankBoxes = document.querySelectorAll('.rankBox');
   const checkedRanks = new Set(Array.from(rankBoxes).filter(b => b.checked).map(b => b.value));
@@ -356,8 +419,11 @@ function render() {
     const matchesCommentFilter = !noCommentOnly || !latestStatus(m.glRef);
     const rank = memberRank(m);
     const matchesRankFilter = allRanksChecked || (rank && checkedRanks.has(rank));
-    return matchesSearch && matchesCommentFilter && matchesRankFilter;
+    const matchesLodgeFilter = !lodgeFilterVal || (m.currentLodges || []).indexOf(lodgeFilterVal) !== -1;
+    return matchesSearch && matchesCommentFilter && matchesRankFilter && matchesLodgeFilter;
   });
+
+  renderOverview(filtered);
 
   filtered = filtered.slice().sort((a, b) => {
     let ka, kb;
@@ -429,12 +495,16 @@ function renderFlagForm(m) {
     '<div><label>Date</label><input type="date" id="' + idBase + '_date" value="' + today + '"></div>' +
     '<div><label>Rep ref</label><input type="text" id="' + idBase + '_rep" placeholder="e.g. L123" value="' + authCode + '"></div>' +
     '<div><label>Note (optional)</label><input type="text" id="' + idBase + '_note"></div>' +
-    '<button type="button" onclick="submitFlag(\'' + m.glRef + '\', \'' + idBase + '\')">Save flag</button>' +
-    '<div class="flag-note" id="' + idBase + '_saved">Saved. Refresh to see it in history.</div>' +
+    '<button type="button" id="' + idBase + '_btn" onclick="submitFlag(\'' + m.glRef + '\', \'' + idBase + '\')">Save flag</button>' +
   '</div>';
 }
 
 function submitFlag(glRef, idBase) {
+  const btn = document.getElementById(idBase + '_btn');
+  if (btn.disabled) return; // already submitted — ignore a second click
+  btn.disabled = true;
+  btn.textContent = 'Saved';
+
   document.getElementById('f_lodgeCode').value = authCode;
   document.getElementById('f_pass').value = authPass;
   document.getElementById('f_glRef').value = glRef;
@@ -444,11 +514,9 @@ function submitFlag(glRef, idBase) {
   document.getElementById('f_note').value = document.getElementById(idBase + '_note').value;
   document.getElementById('commentForm').submit();
 
-  const saved = document.getElementById(idBase + '_saved');
-  saved.style.display = 'block';
   // Fire-and-forget over a hidden iframe can't confirm success — same
-  // trade-off as Doc Vault. Advise a manual refresh rather than claiming
-  // success outright.
+  // trade-off as Doc Vault. The disabled "Saved" button above is the
+  // one confirmation signal; advise a manual refresh to see it in history.
 }
 
 function removeComment(commentId) {
