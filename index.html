@@ -14,7 +14,7 @@
   header { background: var(--navy); color: #fff; padding: 18px 24px; display:flex; align-items:center; justify-content:space-between; }
   header h1 { font-size: 18px; margin:0; font-weight:600; letter-spacing:.3px; }
   header .tier-badge { font-size: 12px; background: var(--gold); color:#221; padding:3px 10px; border-radius:12px; display:none; }
-  main { max-width: 900px; margin: 0 auto; padding: 24px; }
+  main { max-width: 1160px; margin: 0 auto; padding: 24px; }
 
   .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:18px; }
 
@@ -48,11 +48,14 @@
   .latest-comment.underway { color:var(--green); }
   .latest-comment-meta { font-weight:400; color:var(--muted); font-size:11px; }
   .history-btn { font-size:12px; color:var(--navy); background:none; border:none; text-decoration:underline; cursor:pointer; padding:4px 0 0; }
+  .degree-dates { font-size:11px; color:var(--muted); margin-top:4px; }
 
   section.group { margin-bottom: 22px; }
   section.group h2 { font-size:14px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:6px; }
 
-  .member { border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:#fff; }
+  .member { border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:#fff; }
+.group-cards { display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:6px; }
+@media (min-width: 700px) { .group-cards { grid-template-columns:1fr 1fr; } }
   .member-top { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
   .member-name { font-weight:600; font-size:15px; }
   .badges { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
@@ -278,14 +281,25 @@ function latestCommentLine(m) {
   '</div>';
 }
 
-function degreeBadges(m) {
-  let out = '';
-  ['EA', 'FC', 'MM'].forEach(deg => {
-    const d = m.degrees && m.degrees[deg];
-    if (d) out += '<span class="badge degree">' + deg + ' ' + d + '</span>';
-  });
-  if (m.pastMaster) out += '<span class="badge pm">PM</span>';
-  return out;
+function rankBadge(m) {
+  let rank = null;
+  if (m.pastMaster) rank = 'PM';               // PM always wins outright, even if
+  else if (m.degrees && m.degrees.MM) rank = 'MM'; // the underlying MM date is missing
+  else if (m.degrees && m.degrees.FC) rank = 'FC';
+  else if (m.degrees && m.degrees.EA) rank = 'EA';
+  if (!rank) return '';
+  const cls = (rank === 'PM') ? 'pm' : 'degree';
+  return '<span class="badge ' + cls + '">' + rank + '</span>';
+}
+
+function degreeDatesLine(m) {
+  const d = m.degrees || {};
+  const parts = [];
+  if (d.EA) parts.push('Initiated ' + d.EA);
+  if (d.FC) parts.push('Passed ' + d.FC);
+  if (d.MM) parts.push('Raised ' + d.MM);
+  if (!parts.length) return '';
+  return '<div class="degree-dates">' + parts.join(' · ') + '</div>';
 }
 
 function render() {
@@ -321,7 +335,8 @@ function render() {
 function renderGroup(title, list) {
   let rows = list.map(renderMember).join('');
   if (!rows) rows = '<div class="empty">None.</div>';
-  return '<section class="group"><h2>' + title + ' (' + list.length + ')</h2>' + rows + '</section>';
+  return '<section class="group"><h2>' + title + ' (' + list.length + ')</h2>' +
+    '<div class="group-cards">' + rows + '</div></section>';
 }
 
 function renderMember(m) {
@@ -345,7 +360,8 @@ function renderMember(m) {
       lodgeLine(m) +
       latestCommentLine(m) +
       historyBtnHtml +
-      '<div class="badges">' + degreeBadges(m) + '</div></div>' +
+      degreeDatesLine(m) +
+      '<div class="badges">' + rankBadge(m) + '</div></div>' +
     '</div>' +
     '<div class="details" id="' + domId + '">' + histHtml + flagFormHtml + '</div>' +
   '</div>';
