@@ -241,6 +241,7 @@ let authPass = '';
 let members = [];
 let comments = [];        // flat list across all fetched members
 let lodgeStats = null;    // this lodge's stats (lodge tier) or null
+let lodgeStatsAll = [];   // every lodge's stats (exec tier)
 let statFilter = null;    // set by clicking an overview stat box; null = no stat filter active
 
 const STAT_LABELS = {
@@ -281,7 +282,7 @@ function login() {
 }
 
 function logout() {
-  authCode = ''; authPass = ''; members = []; comments = []; lodgeStats = null;
+  authCode = ''; authPass = ''; members = []; comments = []; lodgeStats = null; lodgeStatsAll = [];
   document.getElementById('portal').style.display = 'none';
   document.getElementById('loginCard').style.display = 'block';
   document.getElementById('tierBadge').style.display = 'none';
@@ -308,6 +309,7 @@ function fetchData(isLogin) {
     members = res.members;
     comments = res.comments;
     lodgeStats = res.lodgeStats || null;
+    lodgeStatsAll = res.lodgeStatsAll || [];
     populateLodgeFilter();
     renderLodgeStatsBanner();
     if (isLogin) {
@@ -424,7 +426,18 @@ function setAllRankBoxes(checked) {
 
 function renderLodgeStatsBanner() {
   const container = document.getElementById('lodgeStatsBanner');
-  if (tier !== 'lodge' || !lodgeStats) {
+  let stats = null;
+
+  if (tier === 'lodge') {
+    stats = lodgeStats;
+  } else if (tier === 'exec') {
+    const selected = document.getElementById('lodgeFilter').value;
+    if (selected) {
+      stats = lodgeStatsAll.find(s => String(s.lodge).toUpperCase() === selected.toUpperCase()) || null;
+    }
+  }
+
+  if (!stats) {
     container.style.display = 'none';
     return;
   }
@@ -433,12 +446,12 @@ function renderLodgeStatsBanner() {
     '<div class="lsb-item"><div class="lsb-value">' + value + '</div><div class="lsb-label">' + label + '</div></div>';
 
   container.innerHTML =
-    '<div class="lsb-title">Lodge ' + escapeHtml(lodgeStats.lodge) + ' — membership snapshot</div>' +
+    '<div class="lsb-title">Lodge ' + escapeHtml(stats.lodge) + ' — membership snapshot</div>' +
     '<div class="lsb-row">' +
-      item('Total members', lodgeStats.totalMembers) +
-      item('Subscribing RA members', lodgeStats.raMembers + ' (' + lodgeStats.raPct + '%)') +
-      item('Unattached', lodgeStats.unattached + ' (' + lodgeStats.unattachedPct + '%)') +
-      item('Never RA members', lodgeStats.nonRA + ' (' + lodgeStats.nonRAPct + '%)') +
+      item('Total members', stats.totalMembers) +
+      item('Subscribing RA members', stats.raMembers + ' (' + stats.raPct + '%)') +
+      item('Unattached', stats.unattached + ' (' + stats.unattachedPct + '%)') +
+      item('Never RA members', stats.nonRA + ' (' + stats.nonRAPct + '%)') +
     '</div>';
   container.style.display = 'block';
 }
@@ -549,6 +562,7 @@ function render() {
   });
 
   renderOverview(filtered);
+  renderLodgeStatsBanner();
 
   filtered = filtered.filter(matchesStatFilter);
 
