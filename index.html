@@ -41,7 +41,11 @@
   .rank-filter label { display:flex; align-items:center; gap:5px; cursor:pointer; }
   .rank-filter-all { padding:3px 10px; border:1px solid var(--border); background:#f8f9fb; border-radius:12px; cursor:pointer; font-size:12px; color:var(--muted); }
   .overview-dashboard { display:none; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:18px; }
-  .stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; }
+  .stat { background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; cursor:pointer; transition:border-color .1s, box-shadow .1s; }
+  .stat:hover { border-color:var(--navy); }
+  .stat.active { border-color:var(--navy); border-width:2px; box-shadow:0 0 0 1px var(--navy); background:#eef1f8; }
+  .stat-filter-banner { display:flex; align-items:center; gap:10px; background:#eef1f8; border:1px solid var(--navy); border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:13px; }
+  .stat-filter-banner button { padding:3px 10px; border:1px solid var(--navy); background:#fff; color:var(--navy); border-radius:12px; cursor:pointer; font-size:12px; }
   .stat-value { font-size:22px; font-weight:700; color:var(--navy); }
   .stat-label { font-size:11px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.3px; }
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
@@ -190,6 +194,17 @@ let authCode = '';
 let authPass = '';
 let members = [];
 let comments = [];        // flat list across all fetched members
+let statFilter = null;    // set by clicking an overview stat box; null = no stat filter active
+
+const STAT_LABELS = {
+  never: 'Never a member',
+  unattached: 'Unattached',
+  noComment: 'No comment',
+  notInterested: 'Not Interested',
+  longTerm: 'Long term',
+  mediumTerm: 'Medium term',
+  underway: 'On progress'
+};
 
 const STATUS_CLASS = {
   'Not Interested': 'notinterested',
@@ -392,18 +407,41 @@ function renderOverview(list) {
     else if (latest.status === 'Membership underway') counts.underway++;
   });
 
-  const stat = (label, value) =>
-    '<div class="stat"><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div>';
+  const stat = (key, label, value) => {
+    const activeClass = (statFilter === key) ? ' active' : '';
+    return '<div class="stat' + activeClass + '" onclick="setStatFilter(\'' + key + '\')">' +
+      '<div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div>';
+  };
 
   container.innerHTML =
-    stat('Never a member', counts.never) +
-    stat('Unattached', counts.unattached) +
-    stat('No comment', counts.noComment) +
-    stat('Not Interested', counts.notInterested) +
-    stat('Long term', counts.longTerm) +
-    stat('Medium term', counts.mediumTerm) +
-    stat('On progress', counts.underway);
+    stat('never', 'Never a member', counts.never) +
+    stat('unattached', 'Unattached', counts.unattached) +
+    stat('noComment', 'No comment', counts.noComment) +
+    stat('notInterested', 'Not Interested', counts.notInterested) +
+    stat('longTerm', 'Long term', counts.longTerm) +
+    stat('mediumTerm', 'Medium term', counts.mediumTerm) +
+    stat('underway', 'On progress', counts.underway);
   container.style.display = 'grid';
+}
+
+function setStatFilter(key) {
+  statFilter = (statFilter === key) ? null : key; // click again to clear
+  render();
+}
+
+function matchesStatFilter(m) {
+  if (!statFilter) return true;
+  const latest = latestStatus(m.glRef);
+  switch (statFilter) {
+    case 'never': return m.raStatus === 'never';
+    case 'unattached': return m.raStatus === 'unattached';
+    case 'noComment': return !latest;
+    case 'notInterested': return latest && latest.status === 'Not Interested';
+    case 'longTerm': return latest && latest.status === 'Interested long term';
+    case 'mediumTerm': return latest && latest.status === 'Interested medium term';
+    case 'underway': return latest && latest.status === 'Membership underway';
+    default: return true;
+  }
 }
 
 function render() {
@@ -431,6 +469,8 @@ function render() {
 
   renderOverview(filtered);
 
+  filtered = filtered.filter(matchesStatFilter);
+
   filtered = filtered.slice().sort((a, b) => {
     let ka, kb;
     if (sortBy === 'lodge') { ka = sortKeyLodge(a); kb = sortKeyLodge(b); }
@@ -439,7 +479,12 @@ function render() {
     return ka.localeCompare(kb);
   });
 
-  const html = renderGroup('Royal Arch Candidates', filtered);
+  const filterBanner = statFilter
+    ? '<div class="stat-filter-banner">Filtered to: <strong>' + STAT_LABELS[statFilter] + '</strong> ' +
+      '<button type="button" onclick="setStatFilter(\'' + statFilter + '\')">Clear filter</button></div>'
+    : '';
+
+  const html = filterBanner + renderGroup('Royal Arch Candidates', filtered);
 
   document.getElementById('results').innerHTML = html || '<div class="empty">No members found.</div>';
 }
