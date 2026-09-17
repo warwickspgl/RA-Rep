@@ -166,14 +166,14 @@
   <!-- PORTAL -->
   <div id="portal">
     <div class="toolbar">
-      <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()">
+      <input type="text" id="searchBox" placeholder="Search by initials/surname..." oninput="render()" style="display:none;">
       <select id="lodgeFilter" onchange="render()" style="display:none;">
         <option value="">All Lodges</option>
       </select>
       <select id="sortBy" onchange="render()">
-        <option value="name">Sort: Name</option>
-        <option value="lodge">Sort: Lodge</option>
-        <option value="intent">Sort: Intent</option>
+        <option value="name">Sort by: Name</option>
+        <option value="lodge">Sort by: Lodge</option>
+        <option value="intent">Sort by: Intent</option>
       </select>
       <select id="commentFilter" onchange="render()">
         <option value="all">Comments: All Records</option>
@@ -240,7 +240,7 @@ const STAT_LABELS = {
   notInterested: 'Not Interested',
   longTerm: 'Long term',
   mediumTerm: 'Medium term',
-  underway: 'On progress'
+  underway: 'Joining in progress'
 };
 
 const STATUS_CLASS = {
@@ -331,7 +331,7 @@ function latestStatus(glRef) {
 
 function unattachedPill(m) {
   if (m.raStatus !== 'unattached') return '';
-  return '<div class="unattached-pill">FORMER &middot; UNATTACHED</div>';
+  return '<div class="unattached-pill">FORMER &middot; UNATTACHED RA</div>';
 }
 
 function lodgeLine(m) {
@@ -457,7 +457,7 @@ function renderOverview(list) {
     stat('notInterested', 'Not Interested', counts.notInterested) +
     stat('longTerm', 'Long term', counts.longTerm) +
     stat('mediumTerm', 'Medium term', counts.mediumTerm) +
-    stat('underway', 'On progress', counts.underway);
+    stat('underway', 'Joining in progress', counts.underway);
   container.style.display = 'grid';
 }
 
