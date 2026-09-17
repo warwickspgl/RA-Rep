@@ -46,6 +46,7 @@
   .stat-label { font-size:11px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.3px; }
   .toolbar button { padding:9px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
   .lodge-line { font-size:12px; color:var(--muted); margin-top:2px; }
+  .unattached-pill { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.4px; color:#fff; background:var(--amber); padding:2px 9px; border-radius:4px; margin-top:4px; }
   .lodge-line .former { font-style:italic; }
   .latest-comment { font-size:12px; margin-top:4px; font-weight:600; }
   .latest-comment.none { color:var(--muted); font-weight:400; font-style:italic; }
@@ -135,9 +136,9 @@
         <option value="intent">Sort: Intent</option>
       </select>
       <select id="commentFilter" onchange="render()">
-        <option value="all">Comments: All</option>
-        <option value="has">Comments: With comment</option>
-        <option value="none">Comments: No comment</option>
+        <option value="all">Comments: All Records</option>
+        <option value="has">Comments Entered</option>
+        <option value="none">No Comments Entered</option>
       </select>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
@@ -276,6 +277,11 @@ function latestStatus(glRef) {
   return list.length ? list[0] : null;
 }
 
+function unattachedPill(m) {
+  if (m.raStatus !== 'unattached') return '';
+  return '<div class="unattached-pill">FORMER &middot; UNATTACHED</div>';
+}
+
 function lodgeLine(m) {
   const parts = [];
   if (m.currentLodges && m.currentLodges.length) parts.push(m.currentLodges.join(', '));
@@ -369,10 +375,6 @@ function populateLodgeFilter() {
 
 function renderOverview(list) {
   const container = document.getElementById('overview');
-  if (tier !== 'exec') {
-    container.style.display = 'none';
-    return;
-  }
 
   const counts = {
     never: 0, unattached: 0, noComment: 0,
@@ -437,12 +439,7 @@ function render() {
     return ka.localeCompare(kb);
   });
 
-  const never = filtered.filter(m => m.raStatus === 'never');
-  const unattached = filtered.filter(m => m.raStatus === 'unattached');
-
-  const html =
-    renderGroup('Never been Royal Arch members', never) +
-    renderGroup('Unattached — formerly Royal Arch members', unattached);
+  const html = renderGroup('Royal Arch Candidates', filtered);
 
   document.getElementById('results').innerHTML = html || '<div class="empty">No members found.</div>';
 }
@@ -475,6 +472,7 @@ function renderMember(m) {
   return '<div class="member">' +
     '<div class="member-top" onclick="toggleDetails(\'' + domId + '\')">' +
       '<div><div class="member-name">' + escapeHtml(m.initials) + ' ' + escapeHtml(m.surname3) + '</div>' +
+      unattachedPill(m) +
       lodgeLine(m) +
       latestCommentLine(m) +
       historyBtnHtml +
