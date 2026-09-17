@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Royal Arch Reps System</title>
 <style>
   :root {
@@ -97,6 +98,41 @@
 
   .empty { color:var(--muted); font-size:13px; padding:10px 0; }
   .loading { text-align:center; padding:40px; color:var(--muted); }
+  /* ── Mobile layout ────────────────────────────────────────────
+     Reps are likely to use this on a phone at a lodge meeting, so
+     the flag-form (adding a comment) gets the most attention here —
+     everything stacks to full-width, tap targets stay large. */
+  @media (max-width: 640px) {
+    header { padding:14px 16px; flex-wrap:wrap; gap:6px; }
+    header h1 { font-size:16px; }
+    main { padding:14px; }
+
+    .toolbar { flex-direction:column; align-items:stretch; }
+    .toolbar input, .toolbar select, .toolbar button { width:100%; }
+
+    .rank-filter { gap:10px 14px; }
+
+    .overview-dashboard { grid-template-columns:repeat(3, 1fr); gap:8px; }
+    .stat { padding:10px 4px; }
+    .stat-value { font-size:18px; }
+    .stat-label { font-size:9.5px; }
+
+    #loginCard .tabs { flex-direction:column; }
+
+    .member { padding:14px; }
+    .member-name { font-size:16px; }
+
+    /* The flag form is the main on-the-ground task — full-width
+       stacked fields are far easier to tap accurately than a
+       squeezed flex row. */
+    .flag-form { flex-direction:column; align-items:stretch; gap:10px; }
+    .flag-form > div { width:100%; }
+    .flag-form input[type=text] { min-width:0; width:100%; }
+    .flag-form select, .flag-form input { padding:10px; font-size:16px; } /* 16px avoids iOS auto-zoom on focus */
+    .flag-form button { padding:12px; font-size:15px; }
+
+    .history-btn, .remove-comment-btn { padding:6px 0; } /* bigger tap target */
+  }
 </style>
 </head>
 <body>
@@ -144,6 +180,7 @@
         <option value="has">Comments Entered</option>
         <option value="none">No Comments Entered</option>
       </select>
+      <button onclick="resetFilters()">Reset</button>
       <button onclick="refresh()">Refresh</button>
       <button onclick="logout()">Log out</button>
     </div>
@@ -422,6 +459,16 @@ function renderOverview(list) {
     stat('mediumTerm', 'Medium term', counts.mediumTerm) +
     stat('underway', 'On progress', counts.underway);
   container.style.display = 'grid';
+}
+
+function resetFilters() {
+  document.getElementById('searchBox').value = '';
+  document.getElementById('sortBy').value = 'name';
+  document.getElementById('commentFilter').value = 'all';
+  document.getElementById('lodgeFilter').value = '';
+  document.querySelectorAll('.rankBox').forEach(box => box.checked = true);
+  statFilter = null;
+  render();
 }
 
 function setStatFilter(key) {
